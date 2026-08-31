@@ -1,0 +1,10 @@
+# Copy this file to application-dev.properties (gitignored) and fill in your real
+# Neon connection details from the Neon dashboard's "Connection string" panel.
+# Then run with: mvn spring-boot:run -Dspring-boot.run.profiles=dev
+
+spring.datasource.url=jdbc:postgresql://<your-neon-host>/<db-name>?sslmode=require
+spring.datasource.username=<your-neon-username>
+spring.datasource.password=<your-neon-password>
+
+# See real request/response SQL while developing locally
+spring.jpa.show-sql=true
