@@ -29,6 +29,19 @@ public class Tool {
     @Column(name = "icon_key", length = 100)
     private String iconKey;
 
+    @Column(name = "logo_url", columnDefinition = "TEXT")
+    private String logoUrl;
+
+    @Column(name = "website_url", length = 255)
+    private String websiteUrl;
+
+    @Column(length = 100)
+    private String role;
+
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
+
     @Column(name = "display_order", nullable = false)
     @Builder.Default
     private Integer displayOrder = 0;

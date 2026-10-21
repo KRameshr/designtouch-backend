@@ -47,4 +47,8 @@ public class ProcessStep {
     @Column(name = "display_order", nullable = false)
     @Builder.Default
     private Integer displayOrder = 0;
+
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
 }

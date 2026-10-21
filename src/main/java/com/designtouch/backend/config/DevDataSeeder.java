@@ -78,10 +78,10 @@ public class DevDataSeeder implements CommandLineRunner {
     private void seedStats() {
         if (statItemRepository.count() > 0) return;
         statItemRepository.saveAll(List.of(
-                StatItem.builder().label("150+").value(150).suffix("+").description("Projects Completed").displayOrder(1).build(),
-                StatItem.builder().label("80+").value(80).suffix("+").description("Happy Clients").displayOrder(2).build(),
-                StatItem.builder().label("4+").value(4).suffix("+").description("Years Experience").displayOrder(3).build(),
-                StatItem.builder().label("10+").value(10).suffix("+").description("Countries Served").displayOrder(4).build()
+                StatItem.builder().label("Projects Completed").value("80+").suffix("+").description("Projects Completed").displayOrder(1).build(),
+                StatItem.builder().label("Happy Clients").value("4+").suffix("+").description("Happy Clients").displayOrder(2).build(),
+                StatItem.builder().label("Years Experience").value("10+").suffix("+").description("Years Experience").displayOrder(3).build(),
+                StatItem.builder().label("Countries Served").value("10+").suffix("+").description("Countries Served").displayOrder(4).build()
         ));
     }
 

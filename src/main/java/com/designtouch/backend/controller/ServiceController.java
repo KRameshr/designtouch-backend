@@ -20,11 +20,11 @@ public class ServiceController {
 
     private final ServiceRepository repository;
 
-    // ---------- Public reads ----------
+    // ---------- Public reads (only active) ----------
 
     @GetMapping
     public List<ServiceResponse> getAll() {
-        return repository.findAllByOrderByDisplayOrderAsc()
+        return repository.findAllByIsActiveTrueOrderByDisplayOrderAsc()
                 .stream()
                 .map(ServiceResponse::from)
                 .toList();
@@ -43,15 +43,25 @@ public class ServiceController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ServiceResponse create(@Valid @RequestBody ServiceRequest request) {
+        String shortDesc = request.shortDescription() != null && !request.shortDescription().isBlank()
+                ? request.shortDescription()
+                : request.description();
+
         Service service = Service.builder()
                 .icon(request.icon())
                 .title(request.title())
-                .description(request.description())
+                .description(request.description() != null ? request.description() : shortDesc)
+                .shortDescription(shortDesc)
+                .fullDescription(request.fullDescription())
                 .features(request.features())
                 .colorTheme(request.colorTheme())
                 .slug(request.slug())
                 .orderNumber(request.orderNumber())
                 .displayOrder(request.displayOrder() != null ? request.displayOrder() : 0)
+                .ctaLabel(request.ctaLabel())
+                .ctaUrl(request.ctaUrl())
+                .imageUrl(request.imageUrl())
+                .isActive(request.isActive() != null ? request.isActive() : true)
                 .build();
         return ServiceResponse.from(repository.save(service));
     }
@@ -61,15 +71,34 @@ public class ServiceController {
         Service service = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Service not found: " + id));
 
+        String shortDesc = request.shortDescription() != null && !request.shortDescription().isBlank()
+                ? request.shortDescription()
+                : request.description();
+
         service.setIcon(request.icon());
         service.setTitle(request.title());
-        service.setDescription(request.description());
+        service.setDescription(request.description() != null ? request.description() : shortDesc);
+        service.setShortDescription(shortDesc);
+        service.setFullDescription(request.fullDescription());
         service.setFeatures(request.features());
         service.setColorTheme(request.colorTheme());
         service.setSlug(request.slug());
         service.setOrderNumber(request.orderNumber());
         if (request.displayOrder() != null) service.setDisplayOrder(request.displayOrder());
+        service.setCtaLabel(request.ctaLabel());
+        service.setCtaUrl(request.ctaUrl());
+        service.setImageUrl(request.imageUrl());
+        if (request.isActive() != null) service.setIsActive(request.isActive());
 
+        return ServiceResponse.from(repository.save(service));
+    }
+
+    @PatchMapping("/{id}/toggle-active")
+    public ServiceResponse toggleActive(@PathVariable UUID id) {
+        Service service = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Service not found: " + id));
+        boolean current = service.getIsActive() != null ? service.getIsActive() : true;
+        service.setIsActive(!current);
         return ServiceResponse.from(repository.save(service));
     }
 
@@ -85,7 +114,6 @@ public class ServiceController {
     // ---------- Public detail (must stay LAST — /{slug} would otherwise
     // greedily match /admin/all above) ----------
 
-    // "LEARN MORE" -> /services/{slug} detail page
     @GetMapping("/{slug}")
     public ServiceResponse getBySlug(@PathVariable String slug) {
         return repository.findBySlug(slug)

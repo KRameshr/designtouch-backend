@@ -8,3 +8,16 @@ spring.datasource.password=<your-neon-password>
 
 # See real request/response SQL while developing locally
 spring.jpa.show-sql=true
+
+# ==========================================
+# Cloudinary (Media storage & video hosting)
+# Set your real Cloudinary credentials here for local development.
+# Alternatively, set system environment variables:
+# CLOUDINARY_CLOUD_NAME=
+# CLOUDINARY_API_KEY=
+# CLOUDINARY_API_SECRET=
+# ==========================================
+cloudinary.cloud-name=
+cloudinary.api-key=
+cloudinary.api-secret=
+

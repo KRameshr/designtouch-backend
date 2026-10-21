@@ -23,16 +23,16 @@ public class StatItem {
     @UuidGenerator
     private UUID id;
 
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 150)
     private String label;
 
-    @Column(nullable = false)
-    private Integer value;
+    @Column(nullable = false, length = 50)
+    private String value;
 
     @Column(length = 10)
     private String suffix;
 
-    @Column(nullable = false, length = 150)
+    @Column(length = 150)
     private String description;
 
     @Column(length = 100)

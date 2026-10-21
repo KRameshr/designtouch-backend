@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -25,13 +26,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            .cors(Customizer.withDefaults())
             // Stateless REST API — no CSRF tokens or server-side sessions needed,
             // the JWT itself is the auth mechanism on every request.
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // Preflight OPTIONS requests
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 // Public reads + auth endpoints + first-time admin bootstrap
                 .requestMatchers("/api/auth/**").permitAll()
+                // Admin-only endpoints that must be protected even for GET requests
+                .requestMatchers("/api/portfolio/admin/**", "/api/media/migration/**", "/api/services/admin/**", "/api/process-steps/admin/**", "/api/tools/admin/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/contact", "/api/newsletter/**").permitAll()
                 // Everything else under /api/** (writes to portfolio, blog, pricing, etc.)

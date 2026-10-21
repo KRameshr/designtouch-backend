@@ -35,6 +35,25 @@ public class Service {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "short_description", columnDefinition = "TEXT")
+    private String shortDescription;
+
+    @Column(name = "full_description", columnDefinition = "TEXT")
+    private String fullDescription;
+
+    @Column(name = "cta_label", length = 100)
+    private String ctaLabel;
+
+    @Column(name = "cta_url", length = 255)
+    private String ctaUrl;
+
+    @Column(name = "image_url", columnDefinition = "TEXT")
+    private String imageUrl;
+
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
+
     // Maps to Postgres TEXT[] — bullet point features list
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(columnDefinition = "text[]")

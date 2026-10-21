@@ -11,6 +11,8 @@ public interface ServiceRepository extends JpaRepository<Service, UUID> {
 
     List<Service> findAllByOrderByDisplayOrderAsc();
 
+    List<Service> findAllByIsActiveTrueOrderByDisplayOrderAsc();
+
     // "LEARN MORE" -> /services/{slug} detail page
     Optional<Service> findBySlug(String slug);
 }

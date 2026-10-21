@@ -11,4 +11,6 @@ public interface ProcessStepRepository extends JpaRepository<ProcessStep, UUID> 
 
     // Ordered by stepNumber (not displayOrder) so "1. DISCOVER", "2. PLAN"... stay in sequence
     List<ProcessStep> findByPageTypeOrderByStepNumberAsc(PageType pageType);
+
+    List<ProcessStep> findByPageTypeAndIsActiveTrueOrderByStepNumberAsc(PageType pageType);
 }

@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface ToolRepository extends JpaRepository<Tool, UUID> {
 
     List<Tool> findAllByOrderByDisplayOrderAsc();
+
+    List<Tool> findAllByIsActiveTrueOrderByDisplayOrderAsc();
 }

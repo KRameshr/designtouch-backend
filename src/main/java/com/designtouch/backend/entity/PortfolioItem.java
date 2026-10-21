@@ -31,13 +31,21 @@ public class PortfolioItem {
     @Column(nullable = false, length = 200)
     private String title;
 
+    @Column(nullable = false, unique = true, length = 250)
+    private String slug;
+
     // Maps to Postgres native enum `content_type`
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "content_type", nullable = false, columnDefinition = "content_type")
     private ContentType contentType;
 
-    // Nullable — THUMBNAIL_DESIGN items use subCategory instead
+    // Dynamic database-backed category association
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "category_id")
+    private com.designtouch.backend.entity.PortfolioCategory categoryRef;
+
+    // Legacy Postgres native enum `portfolio_category` — maintained for backward compatibility
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(columnDefinition = "portfolio_category")
@@ -61,6 +69,27 @@ public class PortfolioItem {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
+    @Column(name = "video_public_id", columnDefinition = "TEXT")
+    private String videoPublicId;
+
+    @Column(name = "image_public_id", columnDefinition = "TEXT")
+    private String imagePublicId;
+
+    @Column(name = "live_video_url", columnDefinition = "TEXT")
+    private String liveVideoUrl;
+
+    @Column(name = "google_drive_url", columnDefinition = "TEXT")
+    private String googleDriveUrl;
+
+    @Column(name = "video_aspect_ratio", length = 20)
+    @Builder.Default
+    private com.designtouch.backend.entity.enums.VideoAspectRatio videoAspectRatio = com.designtouch.backend.entity.enums.VideoAspectRatio.AUTO;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "resource_links", columnDefinition = "jsonb")
+    @Builder.Default
+    private java.util.List<com.designtouch.backend.dto.ResourceLink> resourceLinks = new java.util.ArrayList<>();
+
     @Column(name = "display_order", nullable = false)
     @Builder.Default
     private Integer displayOrder = 0;
@@ -80,6 +109,15 @@ public class PortfolioItem {
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = OffsetDateTime.now();
+        }
+        if (slug == null || slug.isBlank()) {
+            String base = (title != null && !title.isBlank())
+                    ? title.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "")
+                    : "project";
+            if (base.isBlank()) {
+                base = "project";
+            }
+            slug = base + "-" + UUID.randomUUID().toString().substring(0, 8);
         }
     }
 }
