@@ -1,9 +1,14 @@
 package com.designtouch.backend.service;
 
+import com.designtouch.backend.dto.ServicesHeroBannerRequest;
+import com.designtouch.backend.dto.ServicesHeroBannerResponse;
 import com.designtouch.backend.dto.ServicesPageContentRequest;
 import com.designtouch.backend.dto.ServicesPageContentResponse;
+import com.designtouch.backend.entity.ServicesHeroBanner;
 import com.designtouch.backend.entity.ServicesPageContent;
+import com.designtouch.backend.exception.ResourceNotFoundException;
 import com.designtouch.backend.repository.PortfolioItemRepository;
+import com.designtouch.backend.repository.ServicesHeroBannerRepository;
 import com.designtouch.backend.repository.ServicesPageContentRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -12,34 +17,233 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ServicesPageContentService {
 
     private static final Logger log = LoggerFactory.getLogger(ServicesPageContentService.class);
+    public static final int MAX_HERO_BANNERS = 5;
 
     private final ServicesPageContentRepository repository;
+    private final ServicesHeroBannerRepository bannerRepository;
     private final MediaService mediaService;
     private final PortfolioItemRepository portfolioItemRepository;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ServicesPageContentResponse getServicesPageContent() {
         ServicesPageContent content = repository.findSingleton()
                 .orElseGet(this::createDefault);
-        return ServicesPageContentResponse.from(content);
+        ensureLegacyBannerMigrated(content);
+        List<ServicesHeroBannerResponse> activeBanners = getActiveHeroBanners();
+        return ServicesPageContentResponse.from(content, activeBanners);
+    }
+
+    @Transactional
+    public List<ServicesHeroBannerResponse> getActiveHeroBanners() {
+        ServicesPageContent content = repository.findSingleton().orElse(null);
+        if (content != null) {
+            ensureLegacyBannerMigrated(content);
+        }
+        return bannerRepository.findAllByIsActiveTrueOrderByDisplayOrderAscCreatedAtAsc()
+                .stream()
+                .filter(b -> b.getImageUrl() != null && !b.getImageUrl().isBlank())
+                .map(ServicesHeroBannerResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public List<ServicesHeroBannerResponse> getAllHeroBannersAdmin() {
+        ServicesPageContent content = repository.findSingleton().orElse(null);
+        if (content != null) {
+            ensureLegacyBannerMigrated(content);
+        }
+        return bannerRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc()
+                .stream()
+                .map(ServicesHeroBannerResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public ServicesHeroBannerResponse createHeroBanner(ServicesHeroBannerRequest request) {
+        ServicesPageContent content = repository.findSingleton().orElse(null);
+        if (content != null) {
+            ensureLegacyBannerMigrated(content);
+        }
+
+        long currentCount = bannerRepository.count();
+        if (currentCount >= MAX_HERO_BANNERS) {
+            throw new IllegalStateException("Maximum of 5 hero banners allowed. Please delete or replace an existing banner.");
+        }
+
+        if (request == null || request.imageUrl() == null || request.imageUrl().isBlank()) {
+            throw new IllegalArgumentException("Banner image URL is required.");
+        }
+
+        int nextOrder = request.displayOrder() != null ? request.displayOrder() : (int) currentCount + 1;
+        String label = (request.label() != null && !request.label().isBlank())
+                ? request.label().trim()
+                : "Banner " + ((int) currentCount + 1);
+
+        ServicesHeroBanner banner = ServicesHeroBanner.builder()
+                .label(label)
+                .imageUrl(request.imageUrl().trim())
+                .imagePublicId(request.imagePublicId() != null && !request.imagePublicId().isBlank() ? request.imagePublicId().trim() : null)
+                .displayOrder(nextOrder)
+                .isActive(request.isActive() != null ? request.isActive() : true)
+                .createdAt(OffsetDateTime.now())
+                .updatedAt(OffsetDateTime.now())
+                .build();
+
+        ServicesHeroBanner saved = bannerRepository.saveAndFlush(banner);
+        syncPrimaryBannerToPageContent();
+        return ServicesHeroBannerResponse.from(saved);
+    }
+
+    @Transactional
+    public ServicesHeroBannerResponse updateHeroBanner(UUID id, ServicesHeroBannerRequest request) {
+        ServicesHeroBanner banner = bannerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Hero banner not found: " + id));
+
+        if (request == null || request.imageUrl() == null || request.imageUrl().isBlank()) {
+            throw new IllegalArgumentException("Banner image URL is required.");
+        }
+
+        String oldPublicId = banner.getImagePublicId();
+        String newPublicId = (request.imagePublicId() != null && !request.imagePublicId().isBlank())
+                ? request.imagePublicId().trim()
+                : null;
+
+        if (request.label() != null && !request.label().isBlank()) {
+            banner.setLabel(request.label().trim());
+        }
+        banner.setImageUrl(request.imageUrl().trim());
+        banner.setImagePublicId(newPublicId);
+        if (request.displayOrder() != null) {
+            banner.setDisplayOrder(request.displayOrder());
+        }
+        if (request.isActive() != null) {
+            banner.setIsActive(request.isActive());
+        }
+        banner.setUpdatedAt(OffsetDateTime.now());
+
+        // Persist and flush DB update BEFORE deleting any replaced Cloudinary asset
+        ServicesHeroBanner saved = bannerRepository.saveAndFlush(banner);
+        syncPrimaryBannerToPageContent();
+
+        if (oldPublicId != null && !oldPublicId.isBlank() && !oldPublicId.equals(newPublicId)) {
+            deleteCloudinaryAssetIfUnreferenced(oldPublicId);
+        }
+
+        return ServicesHeroBannerResponse.from(saved);
+    }
+
+    @Transactional
+    public ServicesHeroBannerResponse toggleHeroBannerActive(UUID id) {
+        ServicesHeroBanner banner = bannerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Hero banner not found: " + id));
+
+        boolean current = banner.getIsActive() != null ? banner.getIsActive() : true;
+        banner.setIsActive(!current);
+        banner.setUpdatedAt(OffsetDateTime.now());
+
+        ServicesHeroBanner saved = bannerRepository.saveAndFlush(banner);
+        syncPrimaryBannerToPageContent();
+        return ServicesHeroBannerResponse.from(saved);
+    }
+
+    @Transactional
+    public List<ServicesHeroBannerResponse> reorderHeroBanners(List<UUID> orderedIds) {
+        if (orderedIds == null || orderedIds.isEmpty()) {
+            return getAllHeroBannersAdmin();
+        }
+        List<ServicesHeroBanner> all = bannerRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc();
+        int order = 1;
+        for (UUID targetId : orderedIds) {
+            for (ServicesHeroBanner b : all) {
+                if (b.getId().equals(targetId)) {
+                    b.setDisplayOrder(order++);
+                    b.setUpdatedAt(OffsetDateTime.now());
+                    break;
+                }
+            }
+        }
+        bannerRepository.saveAllAndFlush(all);
+        syncPrimaryBannerToPageContent();
+        return getAllHeroBannersAdmin();
+    }
+
+    @Transactional
+    public void deleteHeroBanner(UUID id) {
+        ServicesHeroBanner banner = bannerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Hero banner not found: " + id));
+
+        String oldPublicId = banner.getImagePublicId();
+        bannerRepository.delete(banner);
+        bannerRepository.flush();
+
+        // Renumber remaining banners' displayOrder sequentially
+        List<ServicesHeroBanner> remaining = bannerRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc();
+        int order = 1;
+        for (ServicesHeroBanner b : remaining) {
+            b.setDisplayOrder(order++);
+        }
+        bannerRepository.saveAllAndFlush(remaining);
+        syncPrimaryBannerToPageContent();
+
+        if (oldPublicId != null && !oldPublicId.isBlank()) {
+            deleteCloudinaryAssetIfUnreferenced(oldPublicId);
+        }
     }
 
     @Transactional
     public ServicesPageContentResponse updateServicesPageContent(ServicesPageContentRequest request) {
         ServicesPageContent content = repository.findSingleton()
                 .orElseGet(this::createDefault);
+        ensureLegacyBannerMigrated(content);
 
-        // If banner image was replaced or cleared, safely clean up the old Cloudinary asset
-        String oldPublicId = content.getHeroBannerImagePublicId();
-        String newPublicId = request.heroBannerImagePublicId();
-        if (oldPublicId != null && !oldPublicId.isBlank() && !oldPublicId.equals(newPublicId)) {
-            deleteCloudinaryAssetIfUnreferenced(oldPublicId);
+        // Only update/replace the banner image when a non-blank banner URL is provided.
+        // Explicit deletion is handled via deleteHeroBannerImage() or deleteHeroBanner(id),
+        // ensuring existing Cloudinary URLs and public IDs remain intact when saving other CMS tabs.
+        if (request.heroBannerImageUrl() != null && !request.heroBannerImageUrl().isBlank()) {
+            String trimmedUrl = request.heroBannerImageUrl().trim();
+            String newPublicId = (request.heroBannerImagePublicId() != null && !request.heroBannerImagePublicId().isBlank())
+                    ? request.heroBannerImagePublicId().trim()
+                    : content.getHeroBannerImagePublicId();
+            String oldPublicId = content.getHeroBannerImagePublicId();
+
+            content.setHeroBannerImageUrl(trimmedUrl);
+            content.setHeroBannerImagePublicId(newPublicId);
+
+            // Sync with Banner 1 if banner table is empty or Banner 1 matches
+            List<ServicesHeroBanner> allBanners = bannerRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc();
+            if (allBanners.isEmpty()) {
+                ServicesHeroBanner first = ServicesHeroBanner.builder()
+                        .label("Banner 1")
+                        .imageUrl(trimmedUrl)
+                        .imagePublicId(newPublicId)
+                        .displayOrder(1)
+                        .isActive(true)
+                        .createdAt(OffsetDateTime.now())
+                        .updatedAt(OffsetDateTime.now())
+                        .build();
+                bannerRepository.saveAndFlush(first);
+            } else {
+                ServicesHeroBanner first = allBanners.get(0);
+                boolean alreadyInList = allBanners.stream().anyMatch(b -> trimmedUrl.equals(b.getImageUrl()));
+                if (!alreadyInList) {
+                    first.setImageUrl(trimmedUrl);
+                    first.setImagePublicId(newPublicId);
+                    first.setUpdatedAt(OffsetDateTime.now());
+                    bannerRepository.saveAndFlush(first);
+                }
+            }
+
+            if (oldPublicId != null && !oldPublicId.isBlank() && !oldPublicId.equals(newPublicId)) {
+                deleteCloudinaryAssetIfUnreferenced(oldPublicId);
+            }
         }
 
         content.setHeroEyebrow(request.heroEyebrow());
@@ -60,8 +264,6 @@ public class ServicesPageContentService {
         content.setHeroStat3Label(request.heroStat3Label());
         if (request.heroShowStats() != null) content.setHeroShowStats(request.heroShowStats());
         if (request.heroShowWorkstation() != null) content.setHeroShowWorkstation(request.heroShowWorkstation());
-        content.setHeroBannerImageUrl(request.heroBannerImageUrl());
-        content.setHeroBannerImagePublicId(request.heroBannerImagePublicId());
 
         content.setServicesEyebrow(request.servicesEyebrow());
         content.setServicesHeading(request.servicesHeading());
@@ -85,7 +287,8 @@ public class ServicesPageContentService {
         content.setCtaAccentNote(request.ctaAccentNote());
         content.setUpdatedAt(OffsetDateTime.now());
 
-        return ServicesPageContentResponse.from(repository.save(content));
+        ServicesPageContent saved = repository.saveAndFlush(content);
+        return ServicesPageContentResponse.from(saved, getActiveHeroBanners());
     }
 
     @Transactional
@@ -97,13 +300,54 @@ public class ServicesPageContentService {
         content.setHeroBannerImageUrl(null);
         content.setHeroBannerImagePublicId(null);
         content.setUpdatedAt(OffsetDateTime.now());
-        ServicesPageContent saved = repository.save(content);
+        ServicesPageContent saved = repository.saveAndFlush(content);
+
+        List<ServicesHeroBanner> allBanners = bannerRepository.findAll();
+        bannerRepository.deleteAll();
+        bannerRepository.flush();
 
         if (oldPublicId != null && !oldPublicId.isBlank()) {
             deleteCloudinaryAssetIfUnreferenced(oldPublicId);
         }
+        for (ServicesHeroBanner b : allBanners) {
+            if (b.getImagePublicId() != null && !b.getImagePublicId().isBlank()) {
+                deleteCloudinaryAssetIfUnreferenced(b.getImagePublicId());
+            }
+        }
 
-        return ServicesPageContentResponse.from(saved);
+        return ServicesPageContentResponse.from(saved, List.of());
+    }
+
+    private void ensureLegacyBannerMigrated(ServicesPageContent content) {
+        if (bannerRepository == null || content == null) return;
+        if (bannerRepository.count() == 0
+                && content.getHeroBannerImageUrl() != null
+                && !content.getHeroBannerImageUrl().isBlank()) {
+            ServicesHeroBanner migrated = ServicesHeroBanner.builder()
+                    .label("Banner 1")
+                    .imageUrl(content.getHeroBannerImageUrl().trim())
+                    .imagePublicId(content.getHeroBannerImagePublicId())
+                    .displayOrder(1)
+                    .isActive(true)
+                    .createdAt(OffsetDateTime.now())
+                    .updatedAt(OffsetDateTime.now())
+                    .build();
+            bannerRepository.saveAndFlush(migrated);
+        }
+    }
+
+    private void syncPrimaryBannerToPageContent() {
+        ServicesPageContent content = repository.findSingleton().orElseGet(this::createDefault);
+        List<ServicesHeroBanner> active = bannerRepository.findAllByIsActiveTrueOrderByDisplayOrderAscCreatedAtAsc();
+        if (!active.isEmpty()) {
+            content.setHeroBannerImageUrl(active.get(0).getImageUrl());
+            content.setHeroBannerImagePublicId(active.get(0).getImagePublicId());
+        } else {
+            content.setHeroBannerImageUrl(null);
+            content.setHeroBannerImagePublicId(null);
+        }
+        content.setUpdatedAt(OffsetDateTime.now());
+        repository.saveAndFlush(content);
     }
 
     private void deleteCloudinaryAssetIfUnreferenced(String publicId) {
@@ -111,8 +355,12 @@ public class ServicesPageContentService {
             return;
         }
         try {
+            if (bannerRepository != null && bannerRepository.existsByImagePublicId(publicId)) {
+                log.info("Asset with publicId {} is still referenced by another hero banner. Skipping Cloudinary deletion.", publicId);
+                return;
+            }
             if (portfolioItemRepository != null && portfolioItemRepository.existsByImagePublicId(publicId)) {
-                log.info("Asset with publicId {} is still referenced elsewhere. Skipping Cloudinary deletion.", publicId);
+                log.info("Asset with publicId {} is still referenced by a portfolio item. Skipping Cloudinary deletion.", publicId);
                 return;
             }
             if (mediaService != null) {
@@ -167,4 +415,3 @@ public class ServicesPageContentService {
                 .build();
     }
 }
-

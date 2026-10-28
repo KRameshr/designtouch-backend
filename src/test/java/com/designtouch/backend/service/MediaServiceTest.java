@@ -175,5 +175,54 @@ class MediaServiceTest {
 
         verify(uploader).destroy(any(), anyMap());
     }
+
+    @Test
+    void testUploadAddOnIcon_svgSuccess() throws IOException {
+        when(cloudinary.uploader()).thenReturn(uploader);
+
+        Map<String, Object> mockResult = Map.of(
+                "secure_url", "https://res.cloudinary.com/demo/image/upload/v1/designtouch/addons/custom-icon.svg",
+                "public_id", "designtouch/addons/custom-icon",
+                "resource_type", "image",
+                "format", "svg",
+                "bytes", 512L
+        );
+
+        when(uploader.upload(any(byte[].class), anyMap())).thenReturn(mockResult);
+
+        MockMultipartFile svgFile = new MockMultipartFile(
+                "file", "icon.svg", "image/svg+xml", "<svg></svg>".getBytes()
+        );
+
+        MediaUploadResponse response = mediaService.uploadAddOnIcon(svgFile);
+
+        assertThat(response).isNotNull();
+        assertThat(response.url()).isEqualTo("https://res.cloudinary.com/demo/image/upload/v1/designtouch/addons/custom-icon.svg");
+        assertThat(response.publicId()).isEqualTo("designtouch/addons/custom-icon");
+        assertThat(response.format()).isEqualTo("svg");
+    }
+
+    @Test
+    void testUploadAddOnIcon_exceeds2Mb_throwsException() {
+        byte[] largeBytes = new byte[3 * 1024 * 1024]; // 3 MB
+        MockMultipartFile largeIcon = new MockMultipartFile(
+                "file", "large.png", "image/png", largeBytes
+        );
+
+        assertThatThrownBy(() -> mediaService.uploadAddOnIcon(largeIcon))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("limit of 2 MB");
+    }
+
+    @Test
+    void testUploadAddOnIcon_invalidFormat_throwsException() {
+        MockMultipartFile invalidFile = new MockMultipartFile(
+                "file", "file.pdf", "application/pdf", new byte[]{1, 2, 3}
+        );
+
+        assertThatThrownBy(() -> mediaService.uploadAddOnIcon(invalidFile))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid icon format");
+    }
 }
 

@@ -34,10 +34,20 @@ public class NewsletterSubscriber {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(name = "confirmation_sent", nullable = false)
+    @Builder.Default
+    private Boolean confirmationSent = false;
+
+    @Column(name = "confirmation_sent_at")
+    private OffsetDateTime confirmationSentAt;
+
     @PrePersist
     protected void onCreate() {
         if (subscribedAt == null) {
             subscribedAt = OffsetDateTime.now();
+        }
+        if (confirmationSent == null) {
+            confirmationSent = false;
         }
     }
 }

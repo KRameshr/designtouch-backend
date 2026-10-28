@@ -30,12 +30,15 @@ public class MediaService {
             "video/mov"
     );
 
-    private static final List<String> ALLOWED_IMAGE_EXTENSIONS = List.of("jpg", "jpeg", "png", "webp");
+    private static final List<String> ALLOWED_IMAGE_EXTENSIONS = List.of("jpg", "jpeg", "png", "webp", "svg");
     private static final List<String> ALLOWED_IMAGE_MIME_TYPES = List.of(
             "image/jpeg",
             "image/png",
-            "image/webp"
+            "image/webp",
+            "image/svg+xml"
     );
+
+    private static final long MAX_ICON_SIZE_BYTES = 2L * 1024 * 1024; // 2 MB
 
     private final Cloudinary cloudinary;
 
@@ -126,12 +129,20 @@ public class MediaService {
         return uploadImage(file, thumbnailFolder != null && !thumbnailFolder.isBlank() ? thumbnailFolder : "designtouch/thumbnails");
     }
 
+    public MediaUploadResponse uploadAddOnIcon(MultipartFile file) {
+        return uploadImage(file, "designtouch/addons");
+    }
+
     public MediaUploadResponse uploadImage(MultipartFile file) {
         return uploadImage(file, thumbnailFolder);
     }
 
     public MediaUploadResponse uploadImage(MultipartFile file, String targetFolder) {
-        validateImageFile(file);
+        if (targetFolder != null && targetFolder.contains("addons")) {
+            validateIconFile(file);
+        } else {
+            validateImageFile(file);
+        }
         String folder = (targetFolder != null && !targetFolder.isBlank()) ? targetFolder : "designtouch/thumbnails";
 
         try {
@@ -234,7 +245,32 @@ public class MediaService {
         boolean extValid = extension != null && ALLOWED_IMAGE_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT));
 
         if (!mimeValid && !extValid) {
-            throw new IllegalArgumentException("Invalid image format. Allowed formats: JPEG, PNG, WebP.");
+            throw new IllegalArgumentException("Invalid image format. Allowed formats: JPEG, PNG, WebP, SVG.");
+        }
+    }
+
+    private void validateIconFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Icon file is required and cannot be empty.");
+        }
+
+        if (file.getSize() > MAX_ICON_SIZE_BYTES) {
+            long maxMb = MAX_ICON_SIZE_BYTES / (1024 * 1024);
+            throw new IllegalArgumentException("File size exceeds the maximum allowed limit of " + maxMb + " MB.");
+        }
+
+        String contentType = file.getContentType();
+        String originalFilename = file.getOriginalFilename();
+        String extension = getFileExtension(originalFilename);
+
+        boolean mimeValid = contentType != null && (
+                ALLOWED_IMAGE_MIME_TYPES.contains(contentType.toLowerCase(Locale.ROOT))
+        );
+
+        boolean extValid = extension != null && ALLOWED_IMAGE_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT));
+
+        if (!mimeValid && !extValid) {
+            throw new IllegalArgumentException("Invalid icon format. Allowed formats: PNG, SVG, WebP, JPG.");
         }
     }
 

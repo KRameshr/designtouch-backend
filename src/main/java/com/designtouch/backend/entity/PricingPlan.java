@@ -1,6 +1,7 @@
 package com.designtouch.backend.entity;
 
 import com.designtouch.backend.entity.enums.PriceType;
+import com.designtouch.backend.entity.enums.PricingServiceCategory;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,6 +31,11 @@ public class PricingPlan {
 
     @Column(name = "plan_name", nullable = false, length = 100)
     private String planName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "service_category", nullable = false, length = 50)
+    @Builder.Default
+    private PricingServiceCategory serviceCategory = PricingServiceCategory.VIDEO_EDITING;
 
     @Column(length = 100)
     private String icon;
@@ -62,6 +68,12 @@ public class PricingPlan {
     @Builder.Default
     private Boolean isMostPopular = false;
 
+    @Column(name = "badge_text", length = 50)
+    private String badgeText;
+
+    @Column(name = "accent_color", length = 50)
+    private String accentColor;
+
     @Column(name = "cta_text", length = 50)
     private String ctaText;
 
@@ -71,4 +83,8 @@ public class PricingPlan {
     @Column(name = "display_order", nullable = false)
     @Builder.Default
     private Integer displayOrder = 0;
+
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
 }

@@ -1,7 +1,5 @@
 package com.designtouch.backend.dto;
 
-import com.designtouch.backend.entity.enums.BlogCategory;
-
-// Blog sidebar "CATEGORIES" list — e.g. { "Video Editing", 12 }
-public record CategoryCountResponse(BlogCategory category, Long count) {
+// Blog sidebar "CATEGORIES" list — e.g. { category: "VIDEO_EDITING", name: "Video Editing", count: 12 }
+public record CategoryCountResponse(String category, String name, Long count) {
 }

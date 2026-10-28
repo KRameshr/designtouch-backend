@@ -7,6 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AddOnRepository extends JpaRepository<AddOn, UUID> {
-
+    List<AddOn> findByIsActiveTrueOrderByDisplayOrderAsc();
     List<AddOn> findAllByOrderByDisplayOrderAsc();
 }

@@ -9,6 +9,9 @@ spring.datasource.password=<your-neon-password>
 # See real request/response SQL while developing locally
 spring.jpa.show-sql=true
 
+# Local development frontend origins (supports Next.js on port 3000 or 3001)
+app.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:${FRONTEND_URL:http://localhost:3000,http://localhost:3001}}
+
 # ==========================================
 # Cloudinary (Media storage & video hosting)
 # Set your real Cloudinary credentials here for local development.
@@ -20,4 +23,14 @@ spring.jpa.show-sql=true
 cloudinary.cloud-name=
 cloudinary.api-key=
 cloudinary.api-secret=
+
+# ==========================================
+# Resend (Transactional Email Delivery)
+# Obtain an API key from https://resend.com/api-keys
+# In local development, leave blank to skip sending emails safely.
+# ==========================================
+resend.api-key=
+resend.from-email=DesignTouch+ <onboarding@resend.dev>
+resend.enabled=true
+
 

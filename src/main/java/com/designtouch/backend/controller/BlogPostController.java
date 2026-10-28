@@ -4,7 +4,6 @@ import com.designtouch.backend.dto.BlogPostDetailResponse;
 import com.designtouch.backend.dto.BlogPostRequest;
 import com.designtouch.backend.dto.BlogPostSummaryResponse;
 import com.designtouch.backend.dto.CategoryCountResponse;
-import com.designtouch.backend.entity.enums.BlogCategory;
 import com.designtouch.backend.service.BlogPostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,20 +25,21 @@ public class BlogPostController {
 
     // ---------- Public reads ----------
 
-    // GET /api/blogs?page=0&size=9&category=VIDEO_EDITING (category optional)
+    // GET /api/blogs?page=0&size=9&category=video-editing (category optional)
     @GetMapping
     public Page<BlogPostSummaryResponse> getAll(
-            @RequestParam(required = false) BlogCategory category,
+            @RequestParam(required = false) String category,
             @PageableDefault(size = 9) Pageable pageable) {
         return service.getPage(category, pageable);
     }
 
-    // GET /api/blogs/search?q=video+editing&page=0&size=9
+    // GET /api/blogs/search?q=video+editing&category=video-editing&page=0&size=9
     @GetMapping("/search")
     public Page<BlogPostSummaryResponse> search(
             @RequestParam String q,
+            @RequestParam(required = false) String category,
             @PageableDefault(size = 9) Pageable pageable) {
-        return service.search(q, pageable);
+        return service.search(q, category, pageable);
     }
 
     // "POPULAR POSTS" sidebar
@@ -60,6 +60,12 @@ public class BlogPostController {
     @GetMapping("/admin/all")
     public List<BlogPostSummaryResponse> getAllForAdmin() {
         return service.getAllForAdmin();
+    }
+
+    // Admin detail view by ID — includes full content and private/draft posts
+    @GetMapping("/admin/{id}")
+    public BlogPostDetailResponse getByIdForAdmin(@PathVariable UUID id) {
+        return service.getByIdForAdmin(id);
     }
 
     @PostMapping

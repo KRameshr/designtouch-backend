@@ -80,6 +80,25 @@ public class ProcessStepController {
         return ProcessStepResponse.from(repository.save(step));
     }
 
+    @PutMapping("/reorder")
+    public List<ProcessStepResponse> reorder(@RequestBody List<UUID> orderedIds) {
+        if (orderedIds != null) {
+            for (int i = 0; i < orderedIds.size(); i++) {
+                UUID id = orderedIds.get(i);
+                short order = (short) (i + 1);
+                repository.findById(id).ifPresent(s -> {
+                    s.setStepNumber(order);
+                    s.setDisplayOrder((int) order);
+                    repository.save(s);
+                });
+            }
+        }
+        return repository.findAll()
+                .stream()
+                .map(ProcessStepResponse::from)
+                .toList();
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id) {

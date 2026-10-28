@@ -35,4 +35,14 @@ public class AddOn {
     @Column(name = "display_order", nullable = false)
     @Builder.Default
     private Integer displayOrder = 0;
+
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
+
+    @Column(name = "custom_icon_url", columnDefinition = "TEXT")
+    private String customIconUrl;
+
+    @Column(name = "custom_icon_public_id", columnDefinition = "TEXT")
+    private String customIconPublicId;
 }

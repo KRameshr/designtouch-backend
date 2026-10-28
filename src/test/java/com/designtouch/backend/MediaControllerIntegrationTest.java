@@ -158,7 +158,7 @@ class MediaControllerIntegrationTest {
                         .file(badFile)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Invalid image format. Allowed formats: JPEG, PNG, WebP."));
+                .andExpect(jsonPath("$.message").value("Invalid image format. Allowed formats: JPEG, PNG, WebP, SVG."));
     }
 }
 

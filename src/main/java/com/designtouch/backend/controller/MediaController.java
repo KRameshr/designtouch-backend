@@ -57,6 +57,12 @@ public class MediaController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping(value = "/upload/addon-icon", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<MediaUploadResponse> uploadAddOnIcon(@RequestParam("file") MultipartFile file) {
+        MediaUploadResponse response = mediaService.uploadAddOnIcon(file);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping(value = "/upload/thumbnail-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MediaUploadResponse> uploadThumbnailImage(@RequestParam("file") MultipartFile file) {
         MediaUploadResponse response = mediaService.uploadThumbnailImage(file);

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface FaqRepository extends JpaRepository<Faq, UUID> {
-
+    List<Faq> findByCategoryAndIsActiveTrueOrderByDisplayOrderAsc(FaqCategory category);
     List<Faq> findByCategoryOrderByDisplayOrderAsc(FaqCategory category);
+    List<Faq> findAllByOrderByDisplayOrderAsc();
 }

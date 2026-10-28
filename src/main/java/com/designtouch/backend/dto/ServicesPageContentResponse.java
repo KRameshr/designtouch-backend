@@ -3,6 +3,7 @@ package com.designtouch.backend.dto;
 import com.designtouch.backend.entity.ServicesPageContent;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 public record ServicesPageContentResponse(
         Short id,
@@ -26,6 +27,7 @@ public record ServicesPageContentResponse(
         Boolean heroShowWorkstation,
         String heroBannerImageUrl,
         String heroBannerImagePublicId,
+        List<ServicesHeroBannerResponse> heroBanners,
 
         String servicesEyebrow,
         String servicesHeading,
@@ -50,6 +52,10 @@ public record ServicesPageContentResponse(
         OffsetDateTime updatedAt
 ) {
     public static ServicesPageContentResponse from(ServicesPageContent c) {
+        return from(c, List.of());
+    }
+
+    public static ServicesPageContentResponse from(ServicesPageContent c, List<ServicesHeroBannerResponse> heroBanners) {
         return new ServicesPageContentResponse(
                 c.getId(),
                 c.getHeroEyebrow(),
@@ -72,6 +78,7 @@ public record ServicesPageContentResponse(
                 c.getHeroShowWorkstation() != null ? c.getHeroShowWorkstation() : true,
                 c.getHeroBannerImageUrl(),
                 c.getHeroBannerImagePublicId(),
+                heroBanners != null ? heroBanners : List.of(),
 
                 c.getServicesEyebrow(),
                 c.getServicesHeading(),
@@ -97,4 +104,3 @@ public record ServicesPageContentResponse(
         );
     }
 }
-

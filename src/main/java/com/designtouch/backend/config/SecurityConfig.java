@@ -37,7 +37,20 @@ public class SecurityConfig {
                 // Public reads + auth endpoints + first-time admin bootstrap
                 .requestMatchers("/api/auth/**").permitAll()
                 // Admin-only endpoints that must be protected even for GET requests
-                .requestMatchers("/api/portfolio/admin/**", "/api/media/migration/**", "/api/services/admin/**", "/api/process-steps/admin/**", "/api/tools/admin/**").authenticated()
+                .requestMatchers(
+                    "/api/portfolio/admin/**",
+                    "/api/blogs/admin/**",
+                    "/api/blog-categories/admin/**",
+                    "/api/media/migration/**",
+                    "/api/services/admin/**",
+                    "/api/process-steps/admin/**",
+                    "/api/tools/admin/**",
+                    "/api/services-page/banners/admin/**",
+                    "/api/pricing-page/banners/admin/**",
+                    "/api/pricing-plans/admin/**",
+                    "/api/addons/admin/**",
+                    "/api/faqs/admin/**"
+                ).authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/contact", "/api/newsletter/**").permitAll()
                 // Everything else under /api/** (writes to portfolio, blog, pricing, etc.)

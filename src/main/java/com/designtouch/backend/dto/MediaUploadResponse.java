@@ -1,5 +1,7 @@
 package com.designtouch.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public record MediaUploadResponse(
         boolean success,
         String message,
@@ -9,6 +11,10 @@ public record MediaUploadResponse(
         String format,
         long bytes
 ) {
+    @JsonProperty("secureUrl")
+    public String secureUrl() {
+        return url;
+    }
     public static MediaUploadResponse success(String url, String publicId, String resourceType, String format, long bytes) {
         return new MediaUploadResponse(
                 true,

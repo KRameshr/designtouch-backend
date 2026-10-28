@@ -18,6 +18,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
         return ResponseEntity
@@ -33,6 +35,21 @@ public class GlobalExceptionHandler {
             fieldErrors.put(error.getField(), error.getDefaultMessage());
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(fieldErrors);
+    }
+
+    @ExceptionHandler(DuplicateSubscriptionException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateSubscription(DuplicateSubscriptionException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(ex.getMessage(), HttpStatus.CONFLICT.value()));
+    }
+
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatus(org.springframework.web.server.ResponseStatusException ex) {
+        String reason = ex.getReason() != null ? ex.getReason() : ex.getMessage();
+        return ResponseEntity
+                .status(ex.getStatusCode())
+                .body(ErrorResponse.of(reason, ex.getStatusCode().value()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -85,10 +102,43 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of("Malformed request or invalid field format: " + msg, HttpStatus.BAD_REQUEST.value()));
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(org.springframework.dao.DataIntegrityViolationException ex) {
+        log.error("Database integrity violation: {}", ex.getMessage(), ex);
+        String message = "Database constraint violation. An article with this slug, title, or reference may already exist.";
+        if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("slug")) {
+            message = "An article with this URL slug already exists. Please choose a unique slug.";
+        }
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(message, HttpStatus.CONFLICT.value()));
+    }
+
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(jakarta.validation.ConstraintViolationException ex) {
+        log.warn("Validation constraint violation: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of("Validation constraint violated: " + ex.getMessage(), HttpStatus.BAD_REQUEST.value()));
+    }
+
+    @ExceptionHandler(org.springframework.transaction.TransactionSystemException.class)
+    public ResponseEntity<ErrorResponse> handleTransactionSystem(org.springframework.transaction.TransactionSystemException ex) {
+        log.error("Transaction failed: {}", ex.getMessage(), ex);
+        Throwable rootCause = ex.getRootCause();
+        String message = (rootCause != null && rootCause.getMessage() != null)
+                ? rootCause.getMessage()
+                : "Transaction could not be completed. Please check all article fields.";
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of("Transaction error: " + message, HttpStatus.BAD_REQUEST.value()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
+        log.error("Unhandled internal server exception [500]: {}", ex.getMessage(), ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ErrorResponse.of("Something went wrong. Please try again.", 500));
+                .body(ErrorResponse.of("Something went wrong. Please try again.", HttpStatus.INTERNAL_SERVER_ERROR.value()));
     }
 }
