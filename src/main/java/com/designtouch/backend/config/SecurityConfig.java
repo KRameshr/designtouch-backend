@@ -49,10 +49,11 @@ public class SecurityConfig {
                     "/api/pricing-page/banners/admin/**",
                     "/api/pricing-plans/admin/**",
                     "/api/addons/admin/**",
-                    "/api/faqs/admin/**"
+                    "/api/faqs/admin/**",
+                    "/api/admin/chat-leads/**"
                 ).authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/**").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/contact", "/api/newsletter/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/contact", "/api/newsletter/**", "/api/chat/**").permitAll()
                 // Everything else under /api/** (writes to portfolio, blog, pricing, etc.)
                 // requires a valid JWT for an admin user
                 .requestMatchers("/api/**").authenticated()

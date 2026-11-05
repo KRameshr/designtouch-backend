@@ -30,6 +30,24 @@ public class AboutContent {
     @Column(columnDefinition = "TEXT")
     private String subheading;
 
+    @Column(name = "cta_text", length = 100)
+    private String ctaText;
+
+    @Column(name = "cta_link", length = 200)
+    private String ctaLink;
+
+    @Column(name = "hero_banner_image_url", columnDefinition = "TEXT")
+    private String heroBannerImageUrl;
+
+    @Column(name = "hero_banner_image_public_id", columnDefinition = "TEXT")
+    private String heroBannerImagePublicId;
+
+    @Column(name = "story_heading", length = 200)
+    private String storyHeading;
+
+    @Column(name = "story_image_url", columnDefinition = "TEXT")
+    private String storyImageUrl;
+
     @Column(name = "story_paragraph_1", columnDefinition = "TEXT")
     private String storyParagraph1;
 
@@ -38,6 +56,9 @@ public class AboutContent {
 
     @Column(name = "founder_name", length = 150)
     private String founderName;
+
+    @Column(name = "founder_designation", length = 150)
+    private String founderDesignation;
 
     @Column(name = "founder_signature_url", columnDefinition = "TEXT")
     private String founderSignatureUrl;

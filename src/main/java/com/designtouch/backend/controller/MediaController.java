@@ -17,7 +17,7 @@ public class MediaController {
 
     // ---------- Video Uploads ----------
 
-    @PostMapping(value = "/upload/video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = {"/upload/video", "/video"})
     public ResponseEntity<MediaUploadResponse> uploadVideo(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "folder", required = false) String folder) {
@@ -47,7 +47,7 @@ public class MediaController {
 
     // ---------- Image Uploads ----------
 
-    @PostMapping(value = "/upload/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = {"/upload/image", "/image"})
     public ResponseEntity<MediaUploadResponse> uploadImage(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "folder", required = false) String folder) {

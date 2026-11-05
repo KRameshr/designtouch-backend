@@ -10,5 +10,6 @@ public record TestimonialRequest(
         String authorAvatarUrl,
         Short rating,
         Integer displayOrder,
-        Boolean isActive) {
+        Boolean isActive,
+        String serviceType) {
 }

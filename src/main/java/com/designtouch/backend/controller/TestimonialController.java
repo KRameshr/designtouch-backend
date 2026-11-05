@@ -42,6 +42,7 @@ public class TestimonialController {
                 .authorRole(request.authorRole())
                 .authorCompany(request.authorCompany())
                 .authorAvatarUrl(request.authorAvatarUrl())
+                .serviceType(request.serviceType() != null && !request.serviceType().isBlank() ? request.serviceType() : "General Feedback")
                 .rating(request.rating())
                 .displayOrder(request.displayOrder() != null ? request.displayOrder() : 0)
                 .isActive(request.isActive() != null ? request.isActive() : true)
@@ -59,6 +60,7 @@ public class TestimonialController {
         testimonial.setAuthorRole(request.authorRole());
         testimonial.setAuthorCompany(request.authorCompany());
         testimonial.setAuthorAvatarUrl(request.authorAvatarUrl());
+        testimonial.setServiceType(request.serviceType() != null && !request.serviceType().isBlank() ? request.serviceType() : "General Feedback");
         testimonial.setRating(request.rating());
         if (request.displayOrder() != null) testimonial.setDisplayOrder(request.displayOrder());
         if (request.isActive() != null) testimonial.setIsActive(request.isActive());

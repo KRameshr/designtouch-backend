@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface ClientRepository extends JpaRepository<Client, UUID> {
 
     List<Client> findAllByOrderByDisplayOrderAsc();
+
+    List<Client> findByIsActiveTrueAndIsFeaturedTrueOrderByDisplayOrderAsc();
 }

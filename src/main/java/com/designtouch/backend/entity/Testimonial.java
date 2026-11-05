@@ -38,6 +38,9 @@ public class Testimonial {
     @Column(name = "author_avatar_url", columnDefinition = "TEXT")
     private String authorAvatarUrl;
 
+    @Column(name = "service_type", length = 100)
+    private String serviceType;
+
     private Short rating;
 
     @Column(name = "display_order", nullable = false)

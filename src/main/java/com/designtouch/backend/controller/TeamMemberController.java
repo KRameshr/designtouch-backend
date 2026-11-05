@@ -33,15 +33,21 @@ public class TeamMemberController {
         return repository.findAll().stream().map(TeamMemberResponse::from).toList();
     }
 
+    private String normalizeUrl(String url) {
+        if (url == null) return null;
+        String trimmed = url.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TeamMemberResponse create(@Valid @RequestBody TeamMemberRequest request) {
         TeamMember member = TeamMember.builder()
-                .name(request.name())
-                .role(request.role())
-                .photoUrl(request.photoUrl())
-                .linkedinUrl(request.linkedinUrl())
-                .instagramUrl(request.instagramUrl())
+                .name(request.name().trim())
+                .role(request.role().trim())
+                .photoUrl(normalizeUrl(request.photoUrl()))
+                .linkedinUrl(normalizeUrl(request.linkedinUrl()))
+                .instagramUrl(normalizeUrl(request.instagramUrl()))
                 .displayOrder(request.displayOrder() != null ? request.displayOrder() : 0)
                 .isActive(request.isActive() != null ? request.isActive() : true)
                 .build();
@@ -53,11 +59,11 @@ public class TeamMemberController {
         TeamMember member = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Team member not found: " + id));
 
-        member.setName(request.name());
-        member.setRole(request.role());
-        member.setPhotoUrl(request.photoUrl());
-        member.setLinkedinUrl(request.linkedinUrl());
-        member.setInstagramUrl(request.instagramUrl());
+        member.setName(request.name().trim());
+        member.setRole(request.role().trim());
+        member.setPhotoUrl(normalizeUrl(request.photoUrl()));
+        member.setLinkedinUrl(normalizeUrl(request.linkedinUrl()));
+        member.setInstagramUrl(normalizeUrl(request.instagramUrl()));
         if (request.displayOrder() != null) member.setDisplayOrder(request.displayOrder());
         if (request.isActive() != null) member.setIsActive(request.isActive());
 
