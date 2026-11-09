@@ -1,11 +1,17 @@
 package com.designtouch.backend;
 
+import com.designtouch.backend.config.CorsConfig;
+import com.designtouch.backend.config.SecurityConfig;
+import com.designtouch.backend.controller.AuthController;
+import com.designtouch.backend.repository.AdminUserRepository;
+import com.designtouch.backend.security.JwtAuthFilter;
+import com.designtouch.backend.security.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
@@ -14,13 +20,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("dev")
+@WebMvcTest(AuthController.class)
+@Import({CorsConfig.class, SecurityConfig.class, JwtAuthFilter.class})
+// This slice intentionally excludes the application DataSource and Flyway.
 class AuthCorsIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+    private AdminUserRepository adminUserRepository;
+
+    @MockBean
+    private JwtService jwtService;
 
     @Test
     void preflightLoginFromLocalhost3001IsAllowed() throws Exception {

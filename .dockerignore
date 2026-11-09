@@ -1,0 +1,15 @@
+﻿.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+target/
+*.log
+*.txt
+thread-dump.txt
+auth-test-log.txt
+
+.idea/
+.vscode/
+.DS_Store

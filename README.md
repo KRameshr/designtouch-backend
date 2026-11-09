@@ -46,20 +46,20 @@ Spring Boot REST API for the DesignTouch+ creative agency website.
 
 ```
 src/main/java/com/designtouch/backend/
-├── config/       CORS, Security, dev-only data seeder
-├── entity/       @Entity classes (18 total) + enums/ subpackage
-├── repository/   Spring Data JPA repositories (18 total)
-├── dto/          Request/response records — keeps entities out of the API contract
-├── service/      Business logic that needs @Transactional (e.g. BlogPostService)
-├── security/     JWT generation/validation, auth filter, UserDetailsService
-├── controller/   REST endpoints (@RestController)
-└── exception/    Global exception handling → consistent JSON error responses
+â”œâ”€â”€ config/       CORS, Security, dev-only data seeder
+â”œâ”€â”€ entity/       @Entity classes (18 total) + enums/ subpackage
+â”œâ”€â”€ repository/   Spring Data JPA repositories (18 total)
+â”œâ”€â”€ dto/          Request/response records â€” keeps entities out of the API contract
+â”œâ”€â”€ service/      Business logic that needs @Transactional (e.g. BlogPostService)
+â”œâ”€â”€ security/     JWT generation/validation, auth filter, UserDetailsService
+â”œâ”€â”€ controller/   REST endpoints (@RestController)
+â””â”€â”€ exception/    Global exception handling â†’ consistent JSON error responses
 
 src/main/resources/
-├── application.properties          shared config, reads from env vars
-├── application-dev.properties      local-only overrides with real Neon creds (gitignored)
-└── db/migration/
-    └── V1__create_tables.sql       18 tables, 8 enum types, indexes
+â”œâ”€â”€ application.properties          shared config, reads from env vars
+â”œâ”€â”€ application-dev.properties      local-only overrides with real Neon creds (gitignored)
+â””â”€â”€ db/migration/
+    â””â”€â”€ V1__create_tables.sql       18 tables, 8 enum types, indexes
 ```
 
 ## Database migrations
@@ -121,10 +121,26 @@ future admin (write) requests once those endpoints are built.
 
 ## Deployment
 
-- Backend: Render or Railway (free tier), set env vars: `DATABASE_URL`, `DATABASE_USERNAME`,
-  `DATABASE_PASSWORD`, `FRONTEND_URL`, `JWT_SECRET`
-- Database: Neon (free tier, PostgreSQL) -- already set up and verified working
-- Frontend: Vercel
+- **Backend:** Render Web Service using the repository's `Dockerfile` (Java 21 and
+  Spring Boot 3.3). Connect the backend GitHub repository, choose Docker as the
+  runtime, and use the repository root as the Docker build context. The container
+  listens on Spring's `server.port=${PORT:8080}`. Set the Render service's `PORT`
+  to `8080` (or use another Render-assigned value consistently).
+- Set these in the Render service environment. Never commit real credentials:
+  `SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL`, `DATABASE_USERNAME`,
+  `DATABASE_PASSWORD`, and `JWT_SECRET` (at least 32 bytes). For Neon, use the
+  production branch's JDBC URL with `sslmode=require`.
+- Configure the enabled integrations in Render as needed:
+  `CORS_ALLOWED_ORIGINS` (or `FRONTEND_URL`), `CLOUDINARY_CLOUD_NAME`,
+  `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `RESEND_API_KEY`,
+  `RESEND_FROM_EMAIL`, `RESEND_ENABLED`, `CONTACT_RECIPIENT_EMAIL`, `AI_PROVIDER`,
+  and `GEMINI_API_KEY` or `OPENAI_API_KEY` according to the selected provider.
+- **Database:** Neon PostgreSQL. Existing migrations remain managed by Flyway.
+- **Frontend:** Cloudflare Workers using the existing OpenNext adapter. Set
+  `NEXT_PUBLIC_API_URL` to the Render service URL in Cloudflare's build variables
+  so it is inlined during the Next.js build. Set the production frontend origin
+  in Render's CORS configuration. Keep the current Vercel deployment active
+  until Cloudflare deployment and production testing succeed.
 
 ## Status
 
@@ -138,5 +154,8 @@ future admin (write) requests once those endpoints are built.
 - [x] Connected to real Neon database -- migration + sample data verified end-to-end
 - [ ] Admin write endpoints (POST/PUT/DELETE per entity, behind JWT)
 - [ ] Cloudinary integration for image/video upload
-- [ ] Deploy to Render/Railway
+- [ ] Push reviewed backend changes to GitHub
+- [ ] Deploy backend to Render and verify production APIs/database connection
+- [ ] Deploy frontend to Cloudflare and connect it to the Render API
+- [ ] Complete production testing
 - [ ] Next.js frontend

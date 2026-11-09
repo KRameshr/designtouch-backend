@@ -16,8 +16,10 @@ target/
 .settings/
 
 # Local env / secrets — never commit real DB credentials or JWT secrets
-application-dev.properties
+**/application-dev.properties
 .env
+.env.*
+!.env.example
 
 # OS
 .DS_Store
