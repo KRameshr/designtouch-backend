@@ -21,7 +21,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -113,34 +112,6 @@ class ChatControllerTest {
                 return new ChatMessageResponse(userMsg, aiMsg, aiConfigured.get());
             }
 
-            @Override
-            public ChatConversationResponse getConversation(UUID id) {
-                if (!sampleConvId.equals(id)) {
-                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found.");
-                }
-
-                ChatMessageDto m1 = new ChatMessageDto(
-                        UUID.randomUUID(),
-                        "VISITOR",
-                        "What video editing services do you offer?",
-                        OffsetDateTime.now().minusMinutes(2)
-                );
-                ChatMessageDto m2 = new ChatMessageDto(
-                        UUID.randomUUID(),
-                        "ASSISTANT",
-                        "We specialize in high-retention YouTube edits, social media reels, and commercial videos.",
-                        OffsetDateTime.now().minusMinutes(1)
-                );
-
-                return new ChatConversationResponse(
-                        sampleConvId,
-                        sampleLeadId,
-                        "Test Visitor",
-                        "ACTIVE",
-                        OffsetDateTime.now().minusMinutes(2),
-                        List.of(m1, m2)
-                );
-            }
         };
 
         ChatController controller = new ChatController(chatService);
@@ -229,26 +200,7 @@ class ChatControllerTest {
     }
 
     @Test
-    @DisplayName("6. GET /api/chat/conversations/{id} retrieves full conversation history")
-    void getConversation_existingId_returnsHistory() throws Exception {
-        mockMvc.perform(get("/api/chat/conversations/" + sampleConvId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(sampleConvId.toString()))
-                .andExpect(jsonPath("$.leadId").value(sampleLeadId.toString()))
-                .andExpect(jsonPath("$.messages", hasSize(2)))
-                .andExpect(jsonPath("$.messages[0].senderType").value("VISITOR"))
-                .andExpect(jsonPath("$.messages[1].senderType").value("ASSISTANT"));
-    }
-
-    @Test
-    @DisplayName("7. GET /api/chat/conversations/{id} returns 404 for unknown conversation ID")
-    void getConversation_unknownId_returns404() throws Exception {
-        mockMvc.perform(get("/api/chat/conversations/" + UUID.randomUUID()))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("8. POST /api/chat/messages enforces rate limiting when threshold exceeded")
+    @DisplayName("6. POST /api/chat/messages enforces rate limiting when threshold exceeded")
     void sendMessage_rateLimited_returns429() throws Exception {
         rateLimitTriggered.set(true);
         ChatMessageRequest request = new ChatMessageRequest(sampleConvId, "Hello spam");

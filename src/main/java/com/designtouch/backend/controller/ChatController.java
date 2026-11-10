@@ -59,12 +59,6 @@ public class ChatController {
         return emitter;
     }
 
-    @GetMapping("/conversations/{id}")
-    @ResponseStatus(HttpStatus.OK)
-    public ChatConversationResponse getConversation(@PathVariable UUID id) {
-        return chatService.getConversation(id);
-    }
-
     private String extractClientIp(HttpServletRequest request) {
         if (request == null) {
             return "unknown";

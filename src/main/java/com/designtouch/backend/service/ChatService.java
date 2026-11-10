@@ -221,20 +221,6 @@ public class ChatService {
         }
     }
 
-    /**
-     * Ephemeral conversation retrieval. Conversations are not stored persistently.
-     */
-    public ChatConversationResponse getConversation(UUID id) {
-        return new ChatConversationResponse(
-                id,
-                null,
-                "Visitor",
-                "ACTIVE",
-                OffsetDateTime.now(),
-                List.of()
-        );
-    }
-
     private String resolveVisitorName(ChatMessageRequest request) {
         if (request == null) return "Visitor";
 
