@@ -3,7 +3,6 @@ package com.designtouch.backend.service;
 import com.designtouch.backend.dto.ContactMessageRequest;
 import com.designtouch.backend.dto.ContactMessageResponse;
 import com.designtouch.backend.entity.ContactMessage;
-import com.designtouch.backend.exception.EmailDeliveryException;
 import com.designtouch.backend.repository.ContactMessageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,6 +30,7 @@ class ContactMessageServiceTest {
     private AtomicBoolean emailServiceCalled;
     private AtomicBoolean emailServiceReturnValue;
     private AtomicBoolean emailServiceShouldThrow;
+    private AtomicBoolean repositorySaveCompletedBeforeEmail;
     private AtomicReference<ContactMessage> savedEntity;
     private AtomicReference<String> capturedRecipient;
     private AtomicReference<String> capturedVisitorEmail;
@@ -42,6 +42,7 @@ class ContactMessageServiceTest {
         emailServiceCalled = new AtomicBoolean(false);
         emailServiceReturnValue = new AtomicBoolean(true);
         emailServiceShouldThrow = new AtomicBoolean(false);
+        repositorySaveCompletedBeforeEmail = new AtomicBoolean(false);
         savedEntity = new AtomicReference<>(null);
         capturedRecipient = new AtomicReference<>(null);
         capturedVisitorEmail = new AtomicReference<>(null);
@@ -86,6 +87,7 @@ class ContactMessageServiceTest {
                     OffsetDateTime submittedAt
             ) {
                 emailServiceCalled.set(true);
+                repositorySaveCompletedBeforeEmail.set(savedEntity.get() != null);
                 capturedRecipient.set(recipientEmail);
                 capturedVisitorEmail.set(visitorEmail);
                 capturedSubject.set(subject);
@@ -128,14 +130,15 @@ class ContactMessageServiceTest {
         assertThat(savedEntity.get().getMessage()).isEqualTo("We need 5 high-retention YouTube videos edited next month.");
 
         assertThat(emailServiceCalled.get()).isTrue();
+        assertThat(repositorySaveCompletedBeforeEmail.get()).isTrue();
         assertThat(capturedRecipient.get()).isEqualTo("designtouchplus@gmail.com");
         assertThat(capturedVisitorEmail.get()).isEqualTo("alex@company.com");
         assertThat(capturedSubject.get()).isEqualTo("Brand Video Editing");
     }
 
     @Test
-    @DisplayName("When email provider fails or rejects email, EmailDeliveryException is thrown and success is not reported")
-    void submitEnquiry_whenEmailProviderRejects_throwsEmailDeliveryException() {
+    @DisplayName("When email provider rejects notification, the saved enquiry is returned as received")
+    void submitEnquiry_whenEmailProviderRejects_keepsEnquiryAndReportsDeliveryFailure() {
         emailServiceReturnValue.set(false); // Provider rejected or failed
 
         ContactMessageRequest request = new ContactMessageRequest(
@@ -146,16 +149,20 @@ class ContactMessageServiceTest {
                 "Need motion graphics completed by Friday."
         );
 
-        assertThatThrownBy(() -> service.submitEnquiry(request, "192.168.1.11"))
-                .isInstanceOf(EmailDeliveryException.class)
-                .hasMessageContaining("Unable to deliver your enquiry email via our email provider");
-
+        ContactMessageResponse response = service.submitEnquiry(request, "192.168.1.11");
+        assertThat(response.status()).isEqualTo(201);
+        assertThat(response.received()).isTrue();
+        assertThat(response.notificationEmailSent()).isFalse();
+        assertThat(response.message()).contains("received and saved", "could not be delivered");
+        assertThat(response.id()).isEqualTo(savedEntity.get().getId());
+        assertThat(savedEntity.get()).isNotNull();
+        assertThat(repositorySaveCompletedBeforeEmail.get()).isTrue();
         assertThat(emailServiceCalled.get()).isTrue();
     }
 
     @Test
-    @DisplayName("When email provider throws network exception, EmailDeliveryException is thrown")
-    void submitEnquiry_whenEmailProviderThrows_throwsEmailDeliveryException() {
+    @DisplayName("When email provider throws, the saved enquiry is returned as received")
+    void submitEnquiry_whenEmailProviderThrows_keepsEnquiryAndReportsDeliveryFailure() {
         emailServiceShouldThrow.set(true); // Network timeout
 
         ContactMessageRequest request = new ContactMessageRequest(
@@ -166,11 +173,22 @@ class ContactMessageServiceTest {
                 "Looking for a full production suite."
         );
 
-        assertThatThrownBy(() -> service.submitEnquiry(request, "192.168.1.12"))
-                .isInstanceOf(EmailDeliveryException.class)
-                .hasMessageContaining("Unable to deliver your enquiry email");
-
+        ContactMessageResponse response = service.submitEnquiry(request, "192.168.1.12");
+        assertThat(response.status()).isEqualTo(201);
+        assertThat(response.received()).isTrue();
+        assertThat(response.notificationEmailSent()).isFalse();
+        assertThat(savedEntity.get()).isNotNull();
+        assertThat(repositorySaveCompletedBeforeEmail.get()).isTrue();
         assertThat(emailServiceCalled.get()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Contact submission has no outer transaction spanning the email request")
+    void submitEnquiry_isNotTransactional() throws Exception {
+        assertThat(ContactMessageService.class
+                .getMethod("submitEnquiry", ContactMessageRequest.class, String.class)
+                .isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class))
+                .isFalse();
     }
 
     @ParameterizedTest

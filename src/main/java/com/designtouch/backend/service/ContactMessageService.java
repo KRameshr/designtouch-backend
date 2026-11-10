@@ -4,14 +4,12 @@ import com.designtouch.backend.dto.ContactMessageRequest;
 import com.designtouch.backend.dto.ContactMessageResponse;
 import com.designtouch.backend.entity.ContactMessage;
 import com.designtouch.backend.entity.enums.MessageStatus;
-import com.designtouch.backend.exception.EmailDeliveryException;
 import com.designtouch.backend.repository.ContactMessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
@@ -39,7 +37,6 @@ public class ContactMessageService {
     @Value("${app.contact.recipient-email:designtouchplus@gmail.com}")
     private String recipientEmail = "designtouchplus@gmail.com";
 
-    @Transactional
     public ContactMessageResponse submitEnquiry(ContactMessageRequest request, String clientIp) {
         if (request == null) {
             throw new IllegalArgumentException("Request body cannot be null.");
@@ -86,7 +83,9 @@ public class ContactMessageService {
                 .build();
 
         ContactMessage saved = repository.save(contactMessage);
-        log.info("[ContactMessageService] Stored enquiry ID: {} from visitor: {}", saved.getId(), email);
+        // ContactMessageRepository.save owns its transaction. With no surrounding service
+        // transaction, this write commits before the external email request begins.
+        log.info("[ContactMessageService] Stored contact enquiry ID: {}", saved.getId());
 
         // Deliver notification email to configured recipient
         String targetRecipient = (recipientEmail != null && !recipientEmail.isBlank())
@@ -105,26 +104,28 @@ public class ContactMessageService {
                     saved.getCreatedAt() != null ? saved.getCreatedAt() : now
             );
         } catch (Exception ex) {
-            log.error("[ContactMessageService] Failed to send contact enquiry email: {}", ex.getMessage());
+            log.warn("[ContactMessageService] Contact notification failed for enquiry ID {} (error type: {})",
+                    saved.getId(), ex.getClass().getSimpleName());
             emailSent = false;
         }
 
         if (!emailSent) {
-            String reason = emailService.getLastErrorDescription();
-            log.error("[ContactMessageService] Email delivery failed or was rejected by provider for enquiry ID {}. Reason: {}",
-                    saved.getId(), reason != null && !reason.isBlank() ? reason : "Unknown provider failure");
-            throw new EmailDeliveryException(
-                    "Unable to deliver your enquiry email via our email provider. Please try again or reach out to us directly at "
-                            + targetRecipient + "."
+            log.warn("[ContactMessageService] Contact enquiry {} was received; notification email was not delivered", saved.getId());
+            return ContactMessageResponse.of(
+                    "Your message was received and saved. Our team will review your inquiry, but the notification email could not be delivered. You do not need to resubmit.",
+                    saved.getId(),
+                    true,
+                    false
             );
         }
 
-        log.info("[ContactMessageService] Successfully processed enquiry ID: {} and delivered notification email to {}",
-                saved.getId(), targetRecipient);
+        log.info("[ContactMessageService] Contact enquiry {} was received and its notification email was delivered", saved.getId());
 
         return ContactMessageResponse.of(
                 "Thank you! Your message has been sent successfully. We will review your project inquiry and reply within 24 hours.",
-                saved.getId()
+                saved.getId(),
+                true,
+                true
         );
     }
 

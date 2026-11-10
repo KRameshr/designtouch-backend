@@ -2,7 +2,6 @@ package com.designtouch.backend.controller;
 
 import com.designtouch.backend.dto.ContactMessageRequest;
 import com.designtouch.backend.dto.ContactMessageResponse;
-import com.designtouch.backend.exception.EmailDeliveryException;
 import com.designtouch.backend.exception.GlobalExceptionHandler;
 import com.designtouch.backend.service.ContactMessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,7 +41,10 @@ class ContactMessageControllerTest {
             @Override
             public ContactMessageResponse submitEnquiry(ContactMessageRequest request, String clientIp) {
                 if (providerFails.get()) {
-                    throw new EmailDeliveryException("Unable to deliver your enquiry email via our email provider. Please try again or reach out to us directly.");
+                    return ContactMessageResponse.of(
+                            "Your message was received and saved. Our team will review your inquiry, but the notification email could not be delivered. You do not need to resubmit.",
+                            UUID.fromString("11111111-2222-3333-4444-555555555555"), true, false
+                    );
                 }
                 if (rateLimitFails.get()) {
                     throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too many enquiry submissions. Please wait a minute.");
@@ -59,7 +61,7 @@ class ContactMessageControllerTest {
 
                 return ContactMessageResponse.of(
                         "Thank you! Your message has been sent successfully. We will review your project inquiry and reply within 24 hours.",
-                        UUID.fromString("11111111-2222-3333-4444-555555555555")
+                        UUID.fromString("11111111-2222-3333-4444-555555555555"), true, true
                 );
             }
         };
@@ -87,12 +89,14 @@ class ContactMessageControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value(201))
                 .andExpect(jsonPath("$.message").value(containsString("sent successfully")))
+                .andExpect(jsonPath("$.received").value(true))
+                .andExpect(jsonPath("$.notificationEmailSent").value(true))
                 .andExpect(jsonPath("$.id").value("11111111-2222-3333-4444-555555555555"));
     }
 
     @Test
-    @DisplayName("POST /api/contact when email provider fails returns 502 Bad Gateway with error JSON")
-    void submitContact_whenEmailProviderFails_returns502BadGateway() throws Exception {
+    @DisplayName("POST /api/contact when email provider fails returns 201 and confirms the enquiry was received")
+    void submitContact_whenEmailProviderFails_returnsReceivedStatus() throws Exception {
         providerFails.set(true);
 
         ContactMessageRequest request = new ContactMessageRequest(
@@ -106,9 +110,11 @@ class ContactMessageControllerTest {
         mockMvc.perform(post("/api/contact")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.status").value(502))
-                .andExpect(jsonPath("$.message").value(containsString("Unable to deliver your enquiry email")));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value(201))
+                .andExpect(jsonPath("$.received").value(true))
+                .andExpect(jsonPath("$.notificationEmailSent").value(false))
+                .andExpect(jsonPath("$.message").value(containsString("received and saved")));
     }
 
     @Test

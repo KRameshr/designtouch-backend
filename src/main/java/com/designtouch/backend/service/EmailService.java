@@ -229,14 +229,13 @@ public class EmailService {
                         visitorEmail, targetRecipient, response.statusCode(), emailId);
                 return true;
             } else {
-                lastErrorDescription = "Resend API rejected email (HTTP " + response.statusCode() + "): " + response.body();
-                log.error("[EmailService] Resend API rejected contact enquiry email for {}. HTTP status: {}, response: {}",
-                        targetRecipient, response.statusCode(), response.body());
+                lastErrorDescription = "Resend API rejected contact notification (HTTP " + response.statusCode() + ")";
+                log.warn("[EmailService] Resend rejected contact notification (HTTP {})", response.statusCode());
                 return false;
             }
         } catch (Exception ex) {
-            lastErrorDescription = "Exception sending email via Resend: " + ex.getClass().getSimpleName() + " - " + ex.getMessage();
-            log.error("[EmailService] Failed to send contact enquiry email: {}", ex.getMessage(), ex);
+            lastErrorDescription = "Contact notification failed (" + ex.getClass().getSimpleName() + ")";
+            log.warn("[EmailService] Contact notification request failed (error type: {})", ex.getClass().getSimpleName());
             return false;
         }
     }
