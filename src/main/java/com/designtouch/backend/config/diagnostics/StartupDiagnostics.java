@@ -74,8 +74,9 @@ public final class StartupDiagnostics implements ApplicationListener<Application
             String serverType = webServerInitialized.getWebServer().getClass().getSimpleName();
             String stage = serverType.contains("Tomcat") ? "tomcat.web-server-initialized" : "webserver.initialized";
             Long prepared = milestones.get("applicationPrepared");
-            log.info("Startup diagnostic stage={} status=initialized serverType={} preparedToInitializedMs={}",
-                    stage, serverType, prepared == null ? -1 : millis(milestoneElapsed(prepared)));
+            log.info("Startup diagnostic stage={} status=initialized timestampEpochMs={} serverType={} preparedToInitializedMs={}",
+                    stage, System.currentTimeMillis(), serverType,
+                    prepared == null ? -1 : millis(milestoneElapsed(prepared)));
         } else if (event instanceof ApplicationStartedEvent) {
             mark("applicationStarted");
         } else if (event instanceof ApplicationReadyEvent ready) {
