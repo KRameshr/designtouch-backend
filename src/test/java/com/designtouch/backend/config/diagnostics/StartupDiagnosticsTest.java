@@ -3,6 +3,10 @@ package com.designtouch.backend.config.diagnostics;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.metrics.buffering.BufferingApplicationStartup;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 import com.zaxxer.hikari.HikariDataSource;
 import com.zaxxer.hikari.metrics.IMetricsTracker;
 import com.zaxxer.hikari.metrics.MetricsTrackerFactory;
@@ -18,7 +22,7 @@ import static org.mockito.Mockito.verify;
 class StartupDiagnosticsTest {
 
     @Test
-    void capturesRelevantSpringStartupStepsAndBeanTags() {
+    void capturesStartupStepsAndBeanTags() {
         BufferingApplicationStartup startup = new BufferingApplicationStartup(32);
         StartupDiagnostics diagnostics = new StartupDiagnostics(startup);
 
@@ -26,7 +30,7 @@ class StartupDiagnosticsTest {
                 .tag("beanName", "sampleRepository")
                 .end();
 
-        assertThat(diagnostics.relevantStartupSteps())
+        assertThat(diagnostics.startupSteps())
                 .anySatisfy(step -> {
                     assertThat(step.name()).isEqualTo("spring.beans.instantiate");
                     assertThat(step.durationMillis()).isGreaterThanOrEqualTo(0);
@@ -41,8 +45,34 @@ class StartupDiagnosticsTest {
 
         startup.start("spring.boot.webserver.start").end();
 
-        assertThat(diagnostics.relevantStartupSteps())
+        assertThat(diagnostics.startupSteps())
                 .anySatisfy(step -> assertThat(step.name()).isEqualTo("spring.boot.webserver.start"));
+    }
+
+    @Test
+    void capturesStepsOutsideThePreviousNameFilter() {
+        BufferingApplicationStartup startup = new BufferingApplicationStartup(32);
+        StartupDiagnostics diagnostics = new StartupDiagnostics(startup);
+
+        startup.start("custom.blocking-operation").end();
+
+        assertThat(diagnostics.startupSteps())
+                .anySatisfy(step -> assertThat(step.name()).isEqualTo("custom.blocking-operation"));
+    }
+
+    @Test
+    void reportsOnlyTheTwentySlowestStepsSortedByDuration() {
+        BufferingApplicationStartup startup = new BufferingApplicationStartup(64);
+        StartupDiagnostics diagnostics = new StartupDiagnostics(startup);
+        for (int i = 0; i < 30; i++) {
+            startup.start("custom.step." + i).end();
+        }
+
+        List<StartupDiagnostics.StartupStepMeasurement> steps = diagnostics.startupSteps();
+
+        assertThat(steps).hasSize(20);
+        assertThat(steps).extracting(StartupDiagnostics.StartupStepMeasurement::durationMillis)
+                .isSortedAccordingTo(Comparator.reverseOrder());
     }
 
     @Test
@@ -59,6 +89,26 @@ class StartupDiagnosticsTest {
                     assertThat(measurement.beanName()).isEqualTo("sampleBean");
                     assertThat(measurement.durationNanos()).isGreaterThanOrEqualTo(0);
                 });
+    }
+
+    @Test
+    void reportsOnlyTheTwentySlowestBeanInitializations() {
+        List<StartupDiagnostics.TimedBean> measurements = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            measurements.add(new StartupDiagnostics.TimedBean(
+                    "bean.initialization", "bean" + i, Object.class.getName(), i * 1_000_000L));
+        }
+        measurements.add(new StartupDiagnostics.TimedBean(
+                "jpa.repository.initialization", "repository", Object.class.getName(), Long.MAX_VALUE));
+
+        List<StartupDiagnostics.TimedBean> slowest = StartupDiagnostics.slowestBeanInitializations(measurements);
+
+        assertThat(slowest).hasSize(20);
+        assertThat(slowest).extracting(StartupDiagnostics.TimedBean::beanName)
+                .contains("bean29", "bean10")
+                .doesNotContain("bean9", "repository");
+        assertThat(slowest).extracting(StartupDiagnostics.TimedBean::durationNanos)
+                .isSortedAccordingTo(Comparator.reverseOrder());
     }
 
     @Test

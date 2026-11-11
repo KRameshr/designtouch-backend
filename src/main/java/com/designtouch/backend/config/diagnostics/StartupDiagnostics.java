@@ -36,8 +36,8 @@ public final class StartupDiagnostics implements ApplicationListener<Application
 
     private static final Logger log = LoggerFactory.getLogger(StartupDiagnostics.class);
     private static final String ENABLED_ENV = "APP_STARTUP_DIAGNOSTICS_ENABLED";
-    private static final int MAX_STEP_LOGS = 25;
-    private static final int MAX_BEAN_LOGS = 15;
+    private static final int MAX_STEP_LOGS = 20;
+    private static final int MAX_BEAN_LOGS = 20;
     public static final int STARTUP_STEP_BUFFER_CAPACITY = 2048;
 
     private final BufferingApplicationStartup startup;
@@ -144,7 +144,6 @@ public final class StartupDiagnostics implements ApplicationListener<Application
         if (timer != null) {
             TimedBean measurement = new TimedBean(stage, key, timer.beanType(), System.nanoTime() - timer.startedAtNanos());
             measurements.add(measurement);
-            log.info("Startup diagnostic stage={} durationMs={} bean={}", stage, millis(measurement.durationNanos()), key);
         }
     }
 
@@ -208,25 +207,26 @@ public final class StartupDiagnostics implements ApplicationListener<Application
                         stage, millis(totalNanos), stageMeasurements.size());
             }
         }
-        all.stream().filter(m -> !m.stage().equals("bean.initialization"))
-                .sorted(Comparator.comparingLong(TimedBean::durationNanos).reversed())
-                .limit(MAX_BEAN_LOGS)
-                .forEach(m -> log.info("Startup diagnostic stage={} durationMs={} bean={} type={}",
-                        m.stage(), millis(m.durationNanos()), m.beanName(), m.beanType()));
-        all.stream().filter(m -> m.stage().equals("bean.initialization"))
-                .sorted(Comparator.comparingLong(TimedBean::durationNanos).reversed())
-                .limit(MAX_BEAN_LOGS)
+        slowestBeanInitializations(all)
                 .forEach(m -> log.info("Startup diagnostic stage={} durationMs={} bean={} type={}",
                         m.stage(), millis(m.durationNanos()), m.beanName(), m.beanType()));
     }
 
+    static List<TimedBean> slowestBeanInitializations(List<TimedBean> measurements) {
+        return measurements.stream()
+                .filter(measurement -> measurement.stage().equals("bean.initialization"))
+                .sorted(Comparator.comparingLong(TimedBean::durationNanos).reversed())
+                .limit(MAX_BEAN_LOGS)
+                .toList();
+    }
+
     private void logStartupSteps() {
         StartupTimeline timeline = startup.getBufferedTimeline();
-        List<StartupStepMeasurement> relevant = relevantStartupSteps();
+        List<StartupStepMeasurement> steps = startupSteps();
         boolean atCapacity = timeline.getEvents().size() >= STARTUP_STEP_BUFFER_CAPACITY;
         log.info("Startup diagnostic stage=spring.startup-steps bufferedStepCount={} loggedStepCount={} bufferCapacity={} truncationPossible={} droppedCount=unknown",
-                timeline.getEvents().size(), relevant.size(), STARTUP_STEP_BUFFER_CAPACITY, atCapacity);
-        for (StartupStepMeasurement step : relevant) {
+                timeline.getEvents().size(), steps.size(), STARTUP_STEP_BUFFER_CAPACITY, atCapacity);
+        for (StartupStepMeasurement step : steps) {
             log.info("Startup diagnostic step={} durationMs={} beanInfo={}",
                     step.name(), step.durationMillis(), step.beanInfo());
         }
@@ -235,14 +235,8 @@ public final class StartupDiagnostics implements ApplicationListener<Application
         }
     }
 
-    List<StartupStepMeasurement> relevantStartupSteps() {
+    List<StartupStepMeasurement> startupSteps() {
         return startup.getBufferedTimeline().getEvents().stream()
-                .filter(event -> {
-                    String name = event.getStartupStep().getName().toLowerCase();
-                    return name.contains("bean") || name.contains("repository") || name.contains("jpa")
-                            || name.contains("hibernate") || name.contains("flyway") || name.contains("context")
-                            || name.contains("webserver") || name.contains("web.server") || name.contains("tomcat");
-                })
                 .sorted(Comparator.comparing(StartupTimeline.TimelineEvent::getDuration).reversed())
                 .limit(MAX_STEP_LOGS)
                 .map(event -> {
