@@ -17,6 +17,7 @@ target/
 
 # Local env / secrets — never commit real DB credentials or JWT secrets
 **/application-dev.properties
+!src/test/resources/application-dev.properties
 .env
 .env.*
 !.env.example
@@ -27,3 +28,16 @@ Thumbs.db
 
 # Logs
 *.log
+*-log.txt
+thread-dump*.txt
+
+# Local backups
+*.bak
+*.backup
+*.backup.*
+*.dump
+
+# One-off local Neon audit / repair scripts
+audit-neon-production.ps1
+repair-neon-*.ps1
+verify-neon-*.ps1
