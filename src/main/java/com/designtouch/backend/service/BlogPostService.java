@@ -105,7 +105,7 @@ public class BlogPostService {
      * Checks once every minute for posts scheduled for publication that have reached their scheduled time.
      * Transitions their status to PUBLISHED and sets isPublished to true.
      */
-    @Scheduled(fixedDelay = 60000)
+    @Scheduled(initialDelay = 15000, fixedDelay = 60000)
     @Transactional
     public void publishScheduledPosts() {
         List<BlogPost> pending = repository.findPendingScheduledPosts();

@@ -10,6 +10,7 @@ import com.designtouch.backend.repository.BlogPostRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.lang.reflect.Proxy;
 import java.time.OffsetDateTime;
@@ -27,6 +28,17 @@ class BlogPostServiceTest {
     private BlogCategoryRepository blogCategoryRepository;
     private MediaService mediaService;
     private BlogPostService service;
+
+    @Test
+    @DisplayName("Scheduled publication waits briefly after startup, then keeps its one-minute delay")
+    void publishScheduledPosts_delaysFirstPollAfterStartup() throws Exception {
+        Scheduled schedule = BlogPostService.class
+                .getMethod("publishScheduledPosts")
+                .getAnnotation(Scheduled.class);
+
+        assertThat(schedule.initialDelay()).isEqualTo(15_000);
+        assertThat(schedule.fixedDelay()).isEqualTo(60_000);
+    }
 
     @BeforeEach
     void setUp() {
