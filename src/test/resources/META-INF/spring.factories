@@ -1,0 +1,1 @@
+org.springframework.boot.env.EnvironmentPostProcessor=com.designtouch.backend.config.TestDatabaseUrlGuardEnvironmentPostProcessor

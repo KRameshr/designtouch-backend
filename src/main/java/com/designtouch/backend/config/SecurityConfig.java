@@ -2,6 +2,7 @@ package com.designtouch.backend.config;
 
 import com.designtouch.backend.security.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -50,6 +51,9 @@ public class SecurityConfig {
                     "/api/pricing-plans/admin/**",
                     "/api/addons/admin/**",
                     "/api/faqs/admin/**",
+                    "/api/team/admin/**",
+                    "/api/clients/admin/**",
+                    "/api/testimonials/admin/**",
                     "/api/admin/chat-leads/**"
                 ).authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/**").permitAll()
@@ -62,6 +66,19 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Prevents Spring Boot from registering JwtAuthFilter as a separate
+     * servlet filter outside its intended Spring Security filter-chain position.
+     * OncePerRequestFilter suppresses duplicate execution, but a second servlet
+     * registration still adds an unnecessary container invocation.
+     */
+    @Bean
+    public FilterRegistrationBean<JwtAuthFilter> jwtAuthFilterRegistration(JwtAuthFilter filter) {
+        FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
